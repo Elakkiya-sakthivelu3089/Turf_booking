@@ -1,0 +1,91 @@
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import {
+  AdminRoute,
+  HeadRoute,
+  EmployeeRoute,
+  PublicRoute,
+} from "./components/ProtectedRoute";
+
+// Pages
+import Landing from "./pages/Landing";
+import AdminAuth from "./pages/Auth";
+import HeadAuth from "./pages/HeadAuth";
+import EmployeeAuth from "./pages/EmployeeAuth";
+
+// Dashboards (you'll create these)
+// import AdminDashboard from "./pages/AdminDashboard";
+// import HeadDashboard from "./pages/HeadDashboard";
+// import EmployeeDashboard from "./pages/EmployeeDashboard";
+
+function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <Routes>
+          {/* Landing/Home */}
+          <Route path="/" element={<Landing />} />
+
+          {/* Admin Routes */}
+          <Route
+            path="/admin/auth"
+            element={
+              <PublicRoute>
+                <AdminAuth />
+              </PublicRoute>
+            }
+          />
+          {/* <Route
+            path="/admin/dashboard"
+            element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            }
+          /> */}
+
+          {/* Head Routes */}
+          <Route
+            path="/head/auth"
+            element={
+              <PublicRoute>
+                <HeadAuth />
+              </PublicRoute>
+            }
+          />
+          {/* <Route
+            path="/head/dashboard"
+            element={
+              <HeadRoute>
+                <HeadDashboard />
+              </HeadRoute>
+            }
+          /> */}
+
+          {/* Employee Routes */}
+          <Route
+            path="/employee/auth"
+            element={
+              <PublicRoute>
+                <EmployeeAuth />
+              </PublicRoute>
+            }
+          />
+          {/* <Route
+            path="/employee/dashboard"
+            element={
+              <EmployeeRoute>
+                <EmployeeDashboard />
+              </EmployeeRoute>
+            }
+          /> */}
+
+          {/* Catch all - redirect to home */}
+          <Route path="*" element={<Landing />} />
+        </Routes>
+      </AuthProvider>
+    </Router>
+  );
+}
+
+export default App;

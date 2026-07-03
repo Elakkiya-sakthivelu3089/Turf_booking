@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  HEAD
+  EMPLOYEE
+}
+
+enum CategoryType {
+  INDOOR
+  OUTDOOR
+}
+
+enum BookingStatus {
+  BOOKED
+  CANCELLED
+  PLAYED
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  phone     String?
+  role      Role     @default(EMPLOYEE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  headedGames Game[]    @relation("GameHead")
+  bookings    Booking[]
+}
+
+model Game {
+  id        Int          @id @default(autoincrement())
+  name      String       @unique
+  category  CategoryType
+  headId    Int?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  head      User?        @relation("GameHead", fields: [headId], references: [id], onDelete: SetNull)
+  bookings  Booking[]
+
+  @@map("games")
+}
+
+model Booking {
+  id          Int           @id @default(autoincrement())
+  gameId      Int
+  employeeId  Int
+  bookingDate DateTime
+  startTime   DateTime
+  endTime     DateTime
+  status      BookingStatus @default(BOOKED)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  cancelledAt DateTime?
+
+  game        Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  employee    User          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([gameId])
+  @@index([employeeId])
+  @@index([bookingDate])
+  @@map("bookings")
+}
