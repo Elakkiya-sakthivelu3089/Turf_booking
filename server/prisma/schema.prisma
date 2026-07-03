@@ -18,6 +18,11 @@ enum CategoryType {
   OUTDOOR
 }
 
+enum TeamName {
+  TEAM_A
+  TEAM_B
+}
+
 enum BookingStatus {
   BOOKED
   CANCELLED
@@ -32,43 +37,72 @@ model User {
   phone     String?
   role      Role     @default(EMPLOYEE)
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  headedGames Game[]    @relation("GameHead")
-  bookings    Booking[]
+  headedGames Game[]          @relation("GameHead")
+  joinedTeams BookingPlayer[]
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  type      CategoryType
+  games     Game[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Game {
-  id        Int          @id @default(autoincrement())
-  name      String       @unique
-  category  CategoryType
-  headId    Int?
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id          Int      @id @default(autoincrement())
+  name        String
+  categoryId  Int
+  category    Category @relation(fields: [categoryId], references: [id])
+  isActive    Boolean  @default(true)
+  headId      Int?
+  head        User?    @relation("GameHead", fields: [headId], references: [id], onDelete: SetNull)
 
-  head      User?        @relation("GameHead", fields: [headId], references: [id], onDelete: SetNull)
-  bookings  Booking[]
+  teamALimit  Int      @default(1)
+  teamBLimit  Int      @default(1)
 
-  @@map("games")
+  bookings    Booking[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Booking {
-  id          Int           @id @default(autoincrement())
-  gameId      Int
-  employeeId  Int
-  bookingDate DateTime
-  startTime   DateTime
-  endTime     DateTime
-  status      BookingStatus @default(BOOKED)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  cancelledAt DateTime?
+  id        Int      @id @default(autoincrement())
 
-  game        Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  employee    User          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  gameId    Int
 
-  @@index([gameId])
-  @@index([employeeId])
-  @@index([bookingDate])
-  @@map("bookings")
+  date      DateTime
+  startTime String
+  endTime   String
+
+  game      Game     @relation(fields: [gameId], references: [id])
+  players   BookingPlayer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([gameId, date, startTime, endTime])
+}
+model BookingPlayer {
+  id Int @id @default(autoincrement())
+
+  bookingId Int
+  userId    Int
+  team      TeamName
+  status    BookingStatus @default(BOOKED)
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  date      DateTime
+  startTime String
+  endTime   String
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date, startTime, endTime])
+  @@unique([bookingId, userId])
 }
