@@ -15,6 +15,7 @@ exports.listUsers = async (req, res) => {
         name: true,
         email: true,
         phone: true,
+        position: true,
         role: true,
         createdAt: true,
       },
@@ -44,6 +45,7 @@ exports.getUser = async (req, res) => {
         name: true,
         email: true,
         phone: true,
+        position: true,
         role: true,
         createdAt: true,
         joinedTeams: {
@@ -77,7 +79,7 @@ exports.createUser = async (req, res) => {
       return res.status(403).json({ message: "Admin access required" });
     }
 
-    const { name, email, password, phone, role } = req.body;
+    const { name, email, password, phone, position, role } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: "Name, email and password are required" });
@@ -90,6 +92,7 @@ exports.createUser = async (req, res) => {
         email,
         password: hashedPassword,
         phone,
+        position,
         role: role || "EMPLOYEE",
       },
       select: {
@@ -97,6 +100,7 @@ exports.createUser = async (req, res) => {
         name: true,
         email: true,
         phone: true,
+        position: true,
         role: true,
         createdAt: true,
       },
@@ -116,12 +120,13 @@ exports.updateUser = async (req, res) => {
       return res.status(403).json({ message: "You can only edit your own details" });
     }
 
-    const { name, email, password, phone, role } = req.body;
+    const { name, email, password, phone, position, role } = req.body;
 
     const data = {
       ...(name !== undefined ? { name } : {}),
       ...(email !== undefined ? { email } : {}),
       ...(phone !== undefined ? { phone } : {}),
+      ...(position !== undefined ? { position } : {}),
       ...(role !== undefined && req.user?.role === "ADMIN" ? { role } : {}),
     };
 
@@ -137,6 +142,7 @@ exports.updateUser = async (req, res) => {
         name: true,
         email: true,
         phone: true,
+        position: true,
         role: true,
         createdAt: true,
       },

@@ -7,6 +7,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import AdminGames from "./pages/admin/AdminGames";
 import BookingPage from "./pages/BookingPage";
+import EmployeeBookingLink from "./pages/EmployeeBookingLink";
 import AdminBookings from "./pages/admin/AdminBookings";
 import UsersPage from "./pages/UsersPage";
 import UserDetails from "./pages/UserDetails";
@@ -19,7 +20,7 @@ const Home = () => {
   return <Navigate to="/login" replace />;
 };
 
-const Unauthorized = () => {
+Unauthorized = () => {
   return (
     <main className="app-page app-page-centered">
       <section className="status-card">
@@ -42,6 +43,7 @@ function App() {
         </Route>
 
         <Route path="/unauthorized" element={<Unauthorized />} />
+        <Route path="/employee-booking" element={<EmployeeBookingLink />} />
 
         {/* Admin only routes */}
         <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>

@@ -26,10 +26,9 @@ async function main() {
         role: "ADMIN",
       },
     });
-
     console.log("✓ Admin user created successfully");
-    console.log(`  Email: ${admin.email}`);
-    console.log(`  Password: admin123`);
+    console.log(`Email: ${admin.email}`);
+    console.log(`Password: admin123`);
   } catch (error) {
     console.error("✗ Seed error:", error.message);
     process.exit(1);

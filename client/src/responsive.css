@@ -189,6 +189,14 @@
     max-width: 100%;
   }
 
+  .employee-booking-link {
+    width: calc(100% - 20px);
+  }
+
+  .employee-register-card .user-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .admin-booking-page .app-page + .app-page {
     padding-top: 0;
   }
@@ -215,6 +223,10 @@
   .slot-grid {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
+
+  .employee-session-bar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+   }
 
   .data-table {
     min-width: 680px;
@@ -272,6 +284,11 @@
     width: 100%;
   }
 
+  .employee-register-card .user-form,
+  .employee-session-bar {
+    grid-template-columns: 1fr;
+  }
+
   .primary-btn,
   .secondary-btn,
   .danger-btn,
@@ -293,6 +310,16 @@
   .team-grid,
   .selection-grid {
     grid-template-columns: 1fr;
+  }
+
+  .employee-booking-link .selection-card {
+    min-height: 86px;
+  }
+
+  .employee-booking-link .booking-section,
+  .employee-booking-link .admin-form-card,
+  .employee-booking-link .filter-bar {
+    padding: 16px;
   }
 
   .team-card-header {
@@ -385,6 +412,13 @@
     padding: 10px;
   }
 
+  .booking-toast {
+    top: 10px;
+    right: 8px;
+    left: 8px;
+    width: auto;
+  }
+
   .sidebar-panel {
     right: 8px;
     left: 8px;
@@ -427,6 +461,10 @@
     width: calc(100% - 12px);
   }
 
+  .employee-booking-link {
+    width: calc(100% - 12px);
+  }
+
   .page-header {
     padding-inline: 2px;
   }
@@ -446,6 +484,16 @@
   .dashboard-card h1,
   .status-card h1 {
     font-size: 30px;
+  }
+
+  .employee-booking-link .page-header h1 {
+    font-size: 28px;
+  }
+
+  .employee-booking-link .slot-btn,
+  .employee-booking-link .primary-btn,
+  .employee-booking-link .secondary-btn {
+    min-height: 46px;
   }
 
   .auth-card,

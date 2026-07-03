@@ -9,6 +9,14 @@ const breakSlots = {
   17: "Maintenance break",
 };
 
+const parseHour = (time) => Number(String(time).split(":")[0]);
+
+const getSlotBoundary = (date = new Date(), time) => {
+  const boundary = new Date(date);
+  boundary.setHours(parseHour(time), 0, 0, 0);
+  return boundary;
+};
+
 const generateSlots = () => {
   const slots = [];
 
@@ -36,4 +44,65 @@ const isBookableSlot = (startTime, endTime) => {
   );
 };
 
-module.exports = { generateSlots, isBookableSlot };
+const isSameLocalDay = (a, b) => {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+};
+
+const getPublicLinkStatus = (date = new Date(), now = new Date()) => {
+  const bookingDate = new Date(date);
+  bookingDate.setHours(0, 0, 0, 0);
+
+  const closeAt = new Date(bookingDate);
+  closeAt.setHours(20, 0, 0, 0);
+
+  const isToday = isSameLocalDay(bookingDate, now);
+  return {
+    isClosed: !isToday || now >= closeAt,
+    closeAt,
+  };
+};
+
+const decoratePublicSlots = (slots, date = new Date(), now = new Date()) => {
+  const { isClosed } = getPublicLinkStatus(date, now);
+
+  return slots.map((slot) => {
+    const graceEndsAt = getSlotBoundary(date, slot.startTime);
+    graceEndsAt.setMinutes(graceEndsAt.getMinutes() + 30);
+
+    const isExpired = isClosed || now >= graceEndsAt;
+    const reason = slot.reason || (isExpired ? "Time closed" : null);
+
+    return {
+      ...slot,
+      isExpired,
+      isBreak: slot.isBreak || isExpired,
+      reason,
+    };
+  });
+};
+
+const isPublicBookableSlot = (startTime, endTime, date = new Date(), now = new Date()) => {
+  if (getPublicLinkStatus(date, now).isClosed) {
+    return false;
+  }
+
+  return decoratePublicSlots(generateSlots(), date, now).some(
+    (slot) =>
+      slot.startTime === startTime &&
+      slot.endTime === endTime &&
+      !slot.isBreak &&
+      !slot.isExpired
+  );
+};
+
+module.exports = {
+  generateSlots,
+  isBookableSlot,
+  decoratePublicSlots,
+  getPublicLinkStatus,
+  isPublicBookableSlot,
+};

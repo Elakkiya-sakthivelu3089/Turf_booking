@@ -1,12 +1,27 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
+const bcrypt = require("bcryptjs");
 
-const { generateSlots, isBookableSlot } = require("../utils/slotUtils");
+const {
+  generateSlots,
+  isBookableSlot,
+  decoratePublicSlots,
+  getPublicLinkStatus,
+  isPublicBookableSlot,
+} = require("../utils/slotUtils");
 
 const normalizeDate = (date) => {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
   return d;
+};
+
+const getLocalDateString = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
 const getBookingPage = async (req, res) => {
@@ -84,6 +99,160 @@ const getBookingPage = async (req, res) => {
     console.log("BOOKING PAGE ERROR:", error);
     res.status(500).json({
       message: "Failed to load bookings",
+      error: error.message,
+    });
+  }
+};
+
+const getPublicBookingPage = async (req, res) => {
+  try {
+    const selectedDate = normalizeDate(new Date());
+    const linkStatus = getPublicLinkStatus(selectedDate);
+
+    if (linkStatus.isClosed) {
+      return res.json({
+        date: selectedDate,
+        linkClosed: true,
+        closesAt: linkStatus.closeAt,
+        games: [],
+      });
+    }
+
+    const slots = decoratePublicSlots(generateSlots(), selectedDate).filter(
+      (slot) => !slot.isExpired
+    );
+
+    const games = await prisma.game.findMany({
+      where: {
+        isActive: true,
+      },
+      include: {
+        category: true,
+        bookings: {
+          where: {
+            date: selectedDate,
+          },
+          include: {
+            players: {
+              where: {
+                status: "BOOKED",
+              },
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
+
+    const formattedGames = games.map((game) => {
+      const slotData = slots.map((slot) => {
+        const booking = game.bookings.find(
+          (b) =>
+            b.startTime === slot.startTime &&
+            b.endTime === slot.endTime
+        );
+
+        const players = booking?.players || [];
+
+        return {
+          ...slot,
+          bookingId: booking?.id || null,
+          teamA: players.filter((p) => p.team === "TEAM_A"),
+          teamB: players.filter((p) => p.team === "TEAM_B"),
+        };
+      });
+
+      return {
+        id: game.id,
+        name: game.name,
+        categoryId: game.categoryId,
+        category: game.category?.name?.toUpperCase(),
+        teamALimit: game.teamALimit,
+        teamBLimit: game.teamBLimit,
+        slots: slotData,
+      };
+    });
+
+    res.json({
+      date: selectedDate,
+      linkClosed: false,
+      closesAt: linkStatus.closeAt,
+      games: formattedGames,
+    });
+  } catch (error) {
+    console.log("PUBLIC BOOKING PAGE ERROR:", error);
+    res.status(500).json({
+      message: "Failed to load booking link",
+      error: error.message,
+    });
+  }
+};
+
+const registerPublicEmployee = async (req, res) => {
+  try {
+    const { name, position, email, phone } = req.body;
+    const validPositions = ["FA", "CRE", "LA"];
+
+    if (!name || !position || !email || !phone) {
+      return res.status(400).json({
+        message: "Name, position, email and phone number are required",
+      });
+    }
+
+    if (!validPositions.includes(position)) {
+      return res.status(400).json({
+        message: "Please select a valid position",
+      });
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        message: "This email is already registered for booking",
+      });
+    }
+
+    const employee = await prisma.user.create({
+      data: {
+        name: name.trim(),
+        position,
+        email: normalizedEmail,
+        phone: phone.trim(),
+        password: await bcrypt.hash(`employee-${Date.now()}-${normalizedEmail}`, 10),
+        role: "EMPLOYEE",
+      },
+    });
+
+    res.status(201).json({
+      message: "Employee registered",
+      employee: {
+        id: employee.id,
+        name: employee.name,
+        position: employee.position,
+        email: employee.email,
+        phone: employee.phone,
+        role: employee.role,
+      },
+    });
+  } catch (error) {
+    console.log("PUBLIC EMPLOYEE REGISTER ERROR:", error);
+    res.status(500).json({
+      message: "Employee registration failed",
       error: error.message,
     });
   }
@@ -219,6 +388,29 @@ const joinBooking = async (req, res) => {
   }
 };
 
+const joinPublicBooking = async (req, res) => {
+  req.body.date = getLocalDateString();
+
+  if (!isPublicBookableSlot(req.body.startTime, req.body.endTime, new Date())) {
+    return res.status(400).json({
+      message: "This slot is closed for employee booking",
+    });
+  }
+
+  const employee = await prisma.user.findUnique({
+    where: { id: Number(req.body.userId) },
+    select: { id: true, role: true },
+  });
+
+  if (!employee || employee.role !== "EMPLOYEE") {
+    return res.status(400).json({
+      message: "Please register employee details before booking",
+    });
+  }
+
+  return joinBooking(req, res);
+};
+
 const listAllBookings = async (req, res) => {
   try {
     if (req.user?.role !== "ADMIN") {
@@ -344,6 +536,9 @@ const cancelBooking = async (req, res) => {
 
 module.exports = {
   getBookingPage,
+  getPublicBookingPage,
+  registerPublicEmployee,
+  joinPublicBooking,
   joinBooking,
   listAllBookings,
   listMyBookings,

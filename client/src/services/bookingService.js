@@ -13,6 +13,57 @@ const getHeaders = () => {
 };
 
 export const bookingService = {
+  registerPublicEmployee: async (payload) => {
+    const res = await fetch(`${API_BASE_URL}/bookings/public/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Employee registration failed");
+    }
+
+    return data;
+  },
+
+  getPublicBookingPage: async (date) => {
+    const query = date ? `?date=${date}` : "";
+    const res = await fetch(`${API_BASE_URL}/bookings/public${query}`, {
+      method: "GET",
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to load bookings");
+    }
+
+    return data;
+  },
+
+  joinPublicBooking: async (bookingData) => {
+    const res = await fetch(`${API_BASE_URL}/bookings/public/join`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(bookingData),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Booking failed");
+    }
+
+    return data;
+  },
+
   getBookingPage: async (date) => {
     const res = await fetch(`${API_BASE_URL}/bookings?date=${date}`, {
       method: "GET",
