@@ -1,7 +1,7 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-const { generateSlots } = require("../utils/slotUtils");
+const { generateSlots, isBookableSlot } = require("../utils/slotUtils");
 
 const normalizeDate = (date) => {
   const d = new Date(date);
@@ -110,6 +110,12 @@ const joinBooking = async (req, res) => {
     if (!["TEAM_A", "TEAM_B"].includes(team)) {
       return res.status(400).json({
         message: "Team must be TEAM_A or TEAM_B",
+      });
+    }
+
+    if (!isBookableSlot(startTime, endTime)) {
+      return res.status(400).json({
+        message: "This slot is blocked for break or maintenance",
       });
     }
 

@@ -275,12 +275,12 @@ const AdminGames = () => {
           {Array.isArray(games) && games.length > 0 ? (
             games.map((game) => (
               <tr key={game.id}>
-                <td>{game.id}</td>
-                <td>{game.name}</td>
-                <td>{game.category?.name || "No category"}</td>
-                <td>{game.teamALimit}</td>
-                <td>{game.teamBLimit}</td>
-                <td className="table-actions">
+                <td data-label="ID">{game.id}</td>
+                <td data-label="Game">{game.name}</td>
+                <td data-label="Category">{game.category?.name || "No category"}</td>
+                <td data-label="Team A Limit">{game.teamALimit}</td>
+                <td data-label="Team B Limit">{game.teamBLimit}</td>
+                <td data-label="Action" className="table-actions">
                   <button className="secondary-btn" onClick={() => editGame(game)}>Edit</button>
 
                   <button

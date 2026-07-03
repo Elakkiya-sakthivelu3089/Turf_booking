@@ -97,10 +97,10 @@ const AdminDashboard = () => {
           <tbody>
             {(report?.dailyBookings || []).map((item) => (
               <tr key={item.id}>
-                <td>{item.user.name}</td>
-                <td>{item.booking.game.name}</td>
-                <td>{item.startTime} - {item.endTime}</td>
-                <td>{item.team === "TEAM_A" ? "Team A" : "Team B"}</td>
+                <td data-label="Employee">{item.user.name}</td>
+                <td data-label="Game">{item.booking.game.name}</td>
+                <td data-label="Slot">{item.startTime} - {item.endTime}</td>
+                <td data-label="Team">{item.team === "TEAM_A" ? "Team A" : "Team B"}</td>
               </tr>
             ))}
             {report?.dailyBookings?.length === 0 && (

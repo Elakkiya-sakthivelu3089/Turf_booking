@@ -156,10 +156,12 @@ const BookingPage = ({ title = "Turf Bookings", audience = "Employee booking" })
                     key={slot.startTime}
                     className={`slot-btn ${
                       selectedSlot?.startTime === slot.startTime ? "is-active" : ""
-                    }`}
+                    } ${slot.isBreak ? "is-break" : ""}`}
+                    disabled={slot.isBreak}
                     onClick={() => setSelectedSlot(slot)}
                   >
-                    {slot.label}
+                    <span>{slot.label}</span>
+                    {slot.isBreak && <small>{slot.reason}</small>}
                   </button>
                 ))}
               </div>

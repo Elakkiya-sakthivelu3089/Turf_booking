@@ -146,12 +146,12 @@ const UsersPage = () => {
           <tbody>
             {users.map((user) => (
               <tr key={user.id}>
-                <td>{user.id}</td>
-                <td>{user.name}</td>
-                <td>{user.email}</td>
-                <td>{user.phone || "-"}</td>
-                <td>{user.role}</td>
-                <td className="table-actions">
+                <td data-label="ID">{user.id}</td>
+                <td data-label="Name">{user.name}</td>
+                <td data-label="Email">{user.email}</td>
+                <td data-label="Phone">{user.phone || "-"}</td>
+                <td data-label="Role">{user.role}</td>
+                <td data-label="Actions" className="table-actions">
                   <button className="secondary-btn" onClick={() => editUser(user)}>Edit</button>
                   <button className="danger-btn" onClick={() => deleteUser(user)}>Delete</button>
                 </td>

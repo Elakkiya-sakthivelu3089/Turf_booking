@@ -112,11 +112,11 @@ const UserDetails = () => {
           <tbody>
             {bookings.map((item) => (
               <tr key={item.id}>
-                <td>{item.id}</td>
-                <td>{item.booking.game.name}</td>
-                <td>{new Date(item.date).toLocaleDateString()}</td>
-                <td>{item.startTime} - {item.endTime}</td>
-                <td>{item.team === "TEAM_A" ? "Team A" : "Team B"}</td>
+                <td data-label="Booking ID">{item.id}</td>
+                <td data-label="Game">{item.booking.game.name}</td>
+                <td data-label="Date">{new Date(item.date).toLocaleDateString()}</td>
+                <td data-label="Slot">{item.startTime} - {item.endTime}</td>
+                <td data-label="Team">{item.team === "TEAM_A" ? "Team A" : "Team B"}</td>
               </tr>
             ))}
             {bookings.length === 0 && (

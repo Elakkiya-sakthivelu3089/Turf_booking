@@ -69,12 +69,12 @@ const EmployeeDashboard = () => {
 
               return (
                 <tr key={item.id}>
-                  <td>{item.booking.game.name}</td>
-                  <td>{new Date(item.date).toLocaleDateString()}</td>
-                  <td>{item.startTime} - {item.endTime}</td>
-                  <td>{item.team === "TEAM_A" ? "Team A" : "Team B"}</td>
-                  <td>{teamMembers || "No members"}</td>
-                  <td>
+                  <td data-label="Game">{item.booking.game.name}</td>
+                  <td data-label="Date">{new Date(item.date).toLocaleDateString()}</td>
+                  <td data-label="Slot">{item.startTime} - {item.endTime}</td>
+                  <td data-label="Your Team">{item.team === "TEAM_A" ? "Team A" : "Team B"}</td>
+                  <td data-label="Team Members">{teamMembers || "No members"}</td>
+                  <td data-label="Action">
                     <button className="danger-btn" onClick={() => cancelBooking(item.id)}>
                       Delete
                     </button>
