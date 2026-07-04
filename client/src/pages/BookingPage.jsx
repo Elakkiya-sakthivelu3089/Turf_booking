@@ -2,6 +2,15 @@ import { useCallback, useEffect, useState } from "react";
 import { bookingService } from "../services/bookingService";
 import GameIcon from "../components/bookings/GameIcon";
 
+const formatDisplayDate = (value) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 const BookingPage = ({ title = "Turf Bookings", audience = "Employee booking" }) => {
   const today = new Date().toISOString().split("T")[0];
 
@@ -11,6 +20,11 @@ const BookingPage = ({ title = "Turf Bookings", audience = "Employee booking" })
   const [selectedGame, setSelectedGame] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState(null);
+  const [linkNotice, setLinkNotice] = useState(null);
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [notice, setNotice] = useState(null);
+  const [pendingTeam, setPendingTeam] = useState(null);
 
   const loadBookings = useCallback(async () => {
     try {
@@ -19,7 +33,7 @@ const BookingPage = ({ title = "Turf Bookings", audience = "Employee booking" })
       const data = await bookingService.getBookingPage(selectedDate);
       setGames(data.games || []);
     } catch (error) {
-      alert(error.message || "Failed to load bookings");
+      setNotice({ type: "error", text: error.message || "Failed to load bookings" });
     } finally {
       setLoading(false);
     }
@@ -62,21 +76,55 @@ const BookingPage = ({ title = "Turf Bookings", audience = "Employee booking" })
     setSelectedSlot(updatedSlot || null);
   };
 
-  const handleJoinTeam = async (team) => {
+  const requestJoinTeam = (team) => {
+    setPendingTeam(team);
+  };
+
+  const handleJoinTeam = async () => {
+    if (!pendingTeam) return;
+
     try {
       await bookingService.joinBooking({
         gameId: selectedGame.id,
         date: selectedDate,
         startTime: selectedSlot.startTime,
         endTime: selectedSlot.endTime,
-        team,
+        team: pendingTeam,
       });
 
-      alert("Slot booked successfully");
+      setPendingTeam(null);
+      setNotice({ type: "success", text: "Slot booked successfully." });
       await refreshSelectedBooking();
     } catch (error) {
-      alert(error.message || "Booking failed");
+      setPendingTeam(null);
+      setNotice({ type: "error", text: error.message || "Booking failed" });
       await refreshSelectedBooking();
+    }
+  };
+
+  const generateBookingLink = async () => {
+    try {
+      setGeneratingLink(true);
+      setLinkNotice(null);
+      const data = await bookingService.generatePublicBookingLink(selectedDate);
+      setGeneratedLink(data.link);
+      setLinkNotice({ type: "success", text: data.message });
+    } catch (error) {
+      setGeneratedLink(null);
+      setLinkNotice({ type: "error", text: error.message || "Failed to generate link" });
+    } finally {
+      setGeneratingLink(false);
+    }
+  };
+
+  const copyGeneratedLink = async () => {
+    if (!generatedLink?.url) return;
+
+    try {
+      await navigator.clipboard.writeText(generatedLink.url);
+      setLinkNotice({ type: "success", text: "Booking link copied" });
+    } catch {
+      setLinkNotice({ type: "error", text: "Copy failed. Select and copy the link manually." });
     }
   };
 
@@ -86,6 +134,16 @@ const BookingPage = ({ title = "Turf Bookings", audience = "Employee booking" })
         <p className="eyebrow">{audience}</p>
         <h1>{title}</h1>
       </div>
+
+      {notice && (
+        <div className={`booking-toast ${notice.type}`} role="status">
+          <strong>{notice.type === "error" ? "Booking issue" : "Success"}</strong>
+          <span>{notice.text}</span>
+          <button type="button" onClick={() => setNotice(null)} aria-label="Close message">
+            x
+          </button>
+        </div>
+      )}
 
       <div className="filter-bar">
         <label>Select Date: </label>
@@ -98,6 +156,8 @@ const BookingPage = ({ title = "Turf Bookings", audience = "Employee booking" })
             setSelectedCategory(null);
             setSelectedGame(null);
             setSelectedSlot(null);
+            setGeneratedLink(null);
+            setLinkNotice(null);
           }}
         />
         <label>Category</label>
@@ -136,6 +196,37 @@ const BookingPage = ({ title = "Turf Bookings", audience = "Employee booking" })
           ))}
         </select>
       </div>
+
+      <section className="booking-section link-generator-card">
+        <h2>Generate Employee Booking Link</h2>
+        <div className="link-generator-row">
+          <div>
+            <span>Selected Date</span>
+            <strong>{formatDisplayDate(`${selectedDate}T00:00:00`)}</strong>
+          </div>
+          <button
+            className="primary-btn"
+            type="button"
+            onClick={generateBookingLink}
+            disabled={generatingLink}
+          >
+            {generatingLink ? "Generating..." : "Approve & Generate Link"}
+          </button>
+        </div>
+
+        {linkNotice && (
+          <p className={`inline-notice ${linkNotice.type}`}>{linkNotice.text}</p>
+        )}
+
+        {generatedLink && (
+          <div className="generated-link-box">
+            <input value={generatedLink.url} readOnly aria-label="Generated booking link" />
+            <button className="secondary-btn" type="button" onClick={copyGeneratedLink}>
+              Copy Link
+            </button>
+          </div>
+        )}
+      </section>
 
       {loading && <p className="loading-text">Loading...</p>}
 
@@ -223,19 +314,50 @@ const BookingPage = ({ title = "Turf Bookings", audience = "Employee booking" })
                   title="Team A"
                   players={selectedSlot.teamA}
                   limit={selectedGame.teamALimit}
-                  onJoin={() => handleJoinTeam("TEAM_A")}
+                  onJoin={() => requestJoinTeam("TEAM_A")}
                 />
 
                 <TeamBox
                   title="Team B"
                   players={selectedSlot.teamB}
                   limit={selectedGame.teamBLimit}
-                  onJoin={() => handleJoinTeam("TEAM_B")}
+                  onJoin={() => requestJoinTeam("TEAM_B")}
                 />
               </div>
             </section>
           )}
         </>
+      )}
+
+      {pendingTeam && (
+        <div className="confirm-overlay" role="presentation">
+          <section className="confirm-dialog" role="dialog" aria-modal="true">
+            <button
+              className="confirm-close"
+              type="button"
+              onClick={() => setPendingTeam(null)}
+              aria-label="Close confirmation"
+            >
+              x
+            </button>
+            <p className="eyebrow">Confirm booking</p>
+            <h2>
+              {selectedGame?.name} - {selectedSlot?.label}
+            </h2>
+            <p className="muted-text">
+              Are you sure you want to book {pendingTeam === "TEAM_A" ? "Team A" : "Team B"}?
+              Once booked, this slot cannot be cancelled from the booking link.
+            </p>
+            <div className="confirm-actions">
+              <button className="secondary-btn" type="button" onClick={() => setPendingTeam(null)}>
+                Cancel
+              </button>
+              <button className="primary-btn" type="button" onClick={handleJoinTeam}>
+                Sure, Book Slot
+              </button>
+            </div>
+          </section>
+        </div>
       )}
     </main>
   );

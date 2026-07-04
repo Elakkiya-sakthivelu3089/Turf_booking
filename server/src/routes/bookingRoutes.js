@@ -4,6 +4,7 @@ const router = express.Router();
 const {
   getBookingPage,
   getPublicBookingPage,
+  generatePublicBookingLink,
   registerPublicEmployee,
   joinPublicBooking,
   joinBooking,
@@ -13,7 +14,8 @@ const {
 } = require("../controllers/bookingController");
 const authMiddleware = require("../middleware/auth");
 
-router.get("/public", getPublicBookingPage);
+router.post("/links", authMiddleware, generatePublicBookingLink);
+router.get("/public/:token", getPublicBookingPage);
 router.post("/public/register", registerPublicEmployee);
 router.post("/public/join", joinPublicBooking);
 

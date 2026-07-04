@@ -1,6 +1,7 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 const { DEFAULT_ADMIN, ensureDefaultAdmin } = require("../utils/defaultAdmin");
 
 const {
@@ -16,12 +17,43 @@ const normalizeDate = (date) => {
   return d;
 };
 
-const getLocalDateString = () => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
+const getLocalDateString = (date = new Date()) => {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+};
+
+const getLinkExpiry = (date) => {
+  const expiresAt = new Date(date);
+  expiresAt.setHours(23, 59, 59, 999);
+  return expiresAt;
+};
+
+const buildPublicLinkUrl = (req, token) => {
+  const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+  return `${clientUrl.replace(/\/$/, "")}/employee-booking/${token}`;
+};
+
+const getValidBookingLink = async (token) => {
+  if (!token) {
+    throw new Error("Booking link token is required");
+  }
+
+  const link = await prisma.bookingLink.findUnique({
+    where: { token },
+  });
+
+  if (!link || !link.isActive) {
+    throw new Error("Booking link is invalid");
+  }
+
+  if (new Date() > link.expiresAt) {
+    throw new Error("Booking link has expired");
+  }
+
+  return link;
 };
 
 const getBookingPage = async (req, res) => {
@@ -106,12 +138,14 @@ const getBookingPage = async (req, res) => {
 
 const getPublicBookingPage = async (req, res) => {
   try {
-    const selectedDate = normalizeDate(new Date());
+    const link = await getValidBookingLink(req.params.token);
+    const selectedDate = normalizeDate(link.date);
     const linkStatus = getPublicLinkStatus(selectedDate);
 
     if (linkStatus.isClosed) {
       return res.json({
         date: selectedDate,
+        token: link.token,
         linkClosed: true,
         closesAt: linkStatus.closeAt,
         games: [],
@@ -184,14 +218,72 @@ const getPublicBookingPage = async (req, res) => {
 
     res.json({
       date: selectedDate,
+      token: link.token,
       linkClosed: false,
       closesAt: linkStatus.closeAt,
       games: formattedGames,
     });
   } catch (error) {
     console.log("PUBLIC BOOKING PAGE ERROR:", error);
-    res.status(500).json({
+    res.status(400).json({
       message: "Failed to load booking link",
+      error: error.message,
+    });
+  }
+};
+
+const generatePublicBookingLink = async (req, res) => {
+  try {
+    await ensureDefaultAdmin(prisma);
+
+    if (req.user?.role !== "ADMIN") {
+      return res.status(403).json({
+        message: "Admin access required",
+      });
+    }
+
+    if (!req.body.date) {
+      return res.status(400).json({
+        message: "Booking date is required",
+      });
+    }
+
+    const selectedDate = normalizeDate(req.body.date);
+    const today = normalizeDate(new Date());
+
+    if (selectedDate < today) {
+      return res.status(400).json({
+        message: "Cannot generate a link for a past date",
+      });
+    }
+
+    const existingLink = await prisma.bookingLink.findUnique({
+      where: { date: selectedDate },
+    });
+
+    const link =
+      existingLink ||
+      (await prisma.bookingLink.create({
+        data: {
+          token: crypto.randomBytes(18).toString("hex"),
+          date: selectedDate,
+          expiresAt: getLinkExpiry(selectedDate),
+        },
+      }));
+
+    res.json({
+      message: existingLink ? "Booking link already exists" : "Booking link generated",
+      link: {
+        id: link.id,
+        token: link.token,
+        date: link.date,
+        expiresAt: link.expiresAt,
+        url: buildPublicLinkUrl(req, link.token),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to generate booking link",
       error: error.message,
     });
   }
@@ -412,7 +504,17 @@ const joinBooking = async (req, res) => {
 
 const joinPublicBooking = async (req, res) => {
   await ensureDefaultAdmin(prisma);
-  req.body.date = getLocalDateString();
+
+  let link;
+  try {
+    link = await getValidBookingLink(req.body.token);
+  } catch (error) {
+    return res.status(400).json({
+      message: error.message,
+    });
+  }
+
+  req.body.date = getLocalDateString(link.date);
 
   const employee = await prisma.user.findUnique({
     where: { id: Number(req.body.userId) },
@@ -556,6 +658,7 @@ const cancelBooking = async (req, res) => {
 module.exports = {
   getBookingPage,
   getPublicBookingPage,
+  generatePublicBookingLink,
   registerPublicEmployee,
   joinPublicBooking,
   joinBooking,

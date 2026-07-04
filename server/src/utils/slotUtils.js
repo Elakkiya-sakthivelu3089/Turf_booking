@@ -57,23 +57,25 @@ const getPublicLinkStatus = (date = new Date(), now = new Date()) => {
   bookingDate.setHours(0, 0, 0, 0);
 
   const closeAt = new Date(bookingDate);
-  closeAt.setHours(20, 0, 0, 0);
+  closeAt.setHours(23, 59, 59, 999);
 
   const isToday = isSameLocalDay(bookingDate, now);
   return {
-    isClosed: !isToday || now >= closeAt,
+    isClosed: now > closeAt,
+    isToday,
+    isFuture: bookingDate > now && !isToday,
     closeAt,
   };
 };
 
 const decoratePublicSlots = (slots, date = new Date(), now = new Date()) => {
-  const { isClosed } = getPublicLinkStatus(date, now);
+  const { isClosed, isToday } = getPublicLinkStatus(date, now);
 
   return slots.map((slot) => {
     const graceEndsAt = getSlotBoundary(date, slot.startTime);
     graceEndsAt.setMinutes(graceEndsAt.getMinutes() + 30);
 
-    const isExpired = isClosed || now >= graceEndsAt;
+    const isExpired = isClosed || (isToday && now >= graceEndsAt);
     const reason = slot.reason || (isExpired ? "Time closed" : null);
 
     return {

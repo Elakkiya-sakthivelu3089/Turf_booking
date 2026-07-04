@@ -1,13 +1,32 @@
 import { useCallback, useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import { bookingService } from "../services/bookingService";
 import GameIcon from "../components/bookings/GameIcon";
 
-const getTodayDate = () => {
-  const date = new Date();
+const getDateInputValue = (value) => {
+  const date = value ? new Date(value) : new Date();
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+};
+
+const formatDisplayDate = (value) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+const formatDisplayDateTime = (value) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  return `${formatDisplayDate(date)} ${date.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
 };
 
 const emptyEmployeeForm = {
@@ -20,7 +39,8 @@ const emptyEmployeeForm = {
 const positionOptions = ["FA", "CRE", "LA"];
 
 const EmployeeBookingLink = () => {
-  const today = getTodayDate();
+  const { token } = useParams();
+  const [bookingDate, setBookingDate] = useState("");
   const [employeeForm, setEmployeeForm] = useState(emptyEmployeeForm);
   const [employee, setEmployee] = useState(() => {
     const saved = sessionStorage.getItem("bookingEmployee");
@@ -36,15 +56,25 @@ const EmployeeBookingLink = () => {
   const [linkClosed, setLinkClosed] = useState(false);
   const [closesAt, setClosesAt] = useState(null);
   const [showAllEmployeeBookings, setShowAllEmployeeBookings] = useState(false);
+  const [pendingTeam, setPendingTeam] = useState(null);
 
   const showNotice = (type, text) => {
     setNotice({ type, text });
   };
 
   const loadBookings = useCallback(async () => {
+    if (!token) {
+      setLinkClosed(true);
+      setClosesAt(null);
+      setGames([]);
+      showNotice("error", "Please open the booking link shared by admin.");
+      return;
+    }
+
     try {
       setLoading(true);
-      const data = await bookingService.getPublicBookingPage(today);
+      const data = await bookingService.getPublicBookingPage(token);
+      setBookingDate(getDateInputValue(data.date));
       setLinkClosed(Boolean(data.linkClosed));
       setClosesAt(data.closesAt || null);
       setGames(data.games || []);
@@ -67,11 +97,16 @@ const EmployeeBookingLink = () => {
         );
       });
     } catch (err) {
+      setLinkClosed(true);
+      setGames([]);
+      setSelectedCategory(null);
+      setSelectedGame(null);
+      setSelectedSlot(null);
       showNotice("error", err.message || "Failed to load slots");
     } finally {
       setLoading(false);
     }
-  }, [selectedGame?.id, today]);
+  }, [selectedGame?.id, token]);
 
   useEffect(() => {
     loadBookings();
@@ -96,7 +131,6 @@ const EmployeeBookingLink = () => {
   const filteredGames = games.filter(
     (game) => game.category === selectedCategory,
   );
-  const gameFilterOptions = selectedCategory ? filteredGames : games;
   const employeeBookedSlots = games.flatMap((game) =>
     game.slots.flatMap((slot) => {
       const teamA = slot.teamA
@@ -141,7 +175,7 @@ const EmployeeBookingLink = () => {
       const data = await bookingService.registerPublicEmployee(employeeForm);
       setEmployee(data.employee);
       sessionStorage.setItem("bookingEmployee", JSON.stringify(data.employee));
-      showNotice("success", "Details saved. You can book today's slot now.");
+      showNotice("success", "Details saved. You can book this link's slot now.");
     } catch (err) {
       showNotice("error", err.message || "Employee details failed");
     } finally {
@@ -149,29 +183,38 @@ const EmployeeBookingLink = () => {
     }
   };
 
-  const handleJoinTeam = async (team) => {
+  const requestJoinTeam = (team) => {
     if (!employee) {
       showNotice("error", "Please fill employee details before booking.");
       return;
     }
 
     if (linkClosed) {
-      showNotice("error", "Today's booking link is closed.");
+      showNotice("error", "This booking link is closed.");
       return;
     }
 
+    setPendingTeam(team);
+  };
+
+  const handleJoinTeam = async () => {
+    if (!pendingTeam) return;
+
     try {
       await bookingService.joinPublicBooking({
+        token,
         userId: employee.id,
         gameId: selectedGame.id,
         startTime: selectedSlot.startTime,
         endTime: selectedSlot.endTime,
-        team,
+        team: pendingTeam,
       });
 
+      setPendingTeam(null);
       showNotice("success", "Slot booked successfully.");
 
-      const data = await bookingService.getPublicBookingPage(today);
+      const data = await bookingService.getPublicBookingPage(token);
+      setBookingDate(getDateInputValue(data.date));
       setLinkClosed(Boolean(data.linkClosed));
       setClosesAt(data.closesAt || null);
       setGames(data.games || []);
@@ -186,6 +229,7 @@ const EmployeeBookingLink = () => {
       setSelectedGame(updatedGame || null);
       setSelectedSlot(updatedSlot || null);
     } catch (err) {
+      setPendingTeam(null);
       showNotice("error", err.message || "Booking failed");
       await loadBookings();
     }
@@ -208,15 +252,15 @@ const EmployeeBookingLink = () => {
     <main className="app-page booking-page employee-booking-link">
       <div className="page-header">
         <p className="eyebrow">Employee booking link</p>
-        <h1>Book Today's Game Slot</h1>
+        <h1>Book Game Slot</h1>
       </div>
-      <button
+      {/* <button
         className="employee-session-clear secondary-btn"
         type="button"
         onClick={handleDelete}
       >
         Delete Session Data
-      </button>
+      </button> */}
       {notice && (
         <div className={`booking-toast ${notice.type}`} role="status">
           <strong>
@@ -236,10 +280,9 @@ const EmployeeBookingLink = () => {
       {linkClosed && (
         <section className="status-card employee-link-closed">
           <p className="eyebrow">Closed</p>
-          <h1>Today's booking link is closed</h1>
+          <h1>Booking link is closed</h1>
           <p className="muted-text">
-            Employee booking is available only until the 7:00 PM slot closes at
-            8:00 PM.
+            This booking link is invalid or expired.
           </p>
         </section>
       )}
@@ -298,7 +341,7 @@ const EmployeeBookingLink = () => {
           <div>
             <label>Booking Date</label>
             <strong>
-              {new Date(`${today}T00:00:00`).toLocaleDateString()}
+              {bookingDate ? formatDisplayDate(`${bookingDate}T00:00:00`) : "-"}
             </strong>
           </div>
           <div>
@@ -311,10 +354,7 @@ const EmployeeBookingLink = () => {
             <div>
               <label>Link Closes</label>
               <strong>
-                {new Date(closesAt).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {formatDisplayDateTime(closesAt)}
               </strong>
             </div>
           )}
@@ -325,30 +365,6 @@ const EmployeeBookingLink = () => {
 
       {employee && !linkClosed && !loading && (
         <>
-          <div className="filter-bar">
-            <label>Game</label>
-            <select
-              value={selectedGame?.id || ""}
-              onChange={(e) => {
-                const game = games.find(
-                  (item) => item.id === Number(e.target.value),
-                );
-                if (game) selectGame(game);
-                if (!e.target.value) {
-                  setSelectedGame(null);
-                  setSelectedSlot(null);
-                }
-              }}
-            >
-              <option value="">Select game</option>
-              {gameFilterOptions.map((game) => (
-                <option key={game.id} value={game.id}>
-                  {game.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
           {employeeBookedSlots.length > 0 && (
             <section className="booking-section employee-booked-slots">
               <h2>Your Booked Slots</h2>
@@ -467,7 +483,7 @@ const EmployeeBookingLink = () => {
               </div>
 
               {selectedGame.slots.length === 0 && (
-                <p className="empty-text">No more slots available for today.</p>
+                <p className="empty-text">No more slots available for this date.</p>
               )}
             </section>
           )}
@@ -483,19 +499,50 @@ const EmployeeBookingLink = () => {
                   title="Team A"
                   players={selectedSlot.teamA}
                   limit={selectedGame.teamALimit}
-                  onJoin={() => handleJoinTeam("TEAM_A")}
+                  onJoin={() => requestJoinTeam("TEAM_A")}
                 />
 
                 <TeamBox
                   title="Team B"
                   players={selectedSlot.teamB}
                   limit={selectedGame.teamBLimit}
-                  onJoin={() => handleJoinTeam("TEAM_B")}
+                  onJoin={() => requestJoinTeam("TEAM_B")}
                 />
               </div>
             </section>
           )}
         </>
+      )}
+
+      {pendingTeam && (
+        <div className="confirm-overlay" role="presentation">
+          <section className="confirm-dialog" role="dialog" aria-modal="true">
+            <button
+              className="confirm-close"
+              type="button"
+              onClick={() => setPendingTeam(null)}
+              aria-label="Close confirmation"
+            >
+              x
+            </button>
+            <p className="eyebrow">Confirm booking</p>
+            <h2>
+              {selectedGame?.name} - {selectedSlot?.label}
+            </h2>
+            <p className="muted-text">
+              Are you sure you want to book {pendingTeam === "TEAM_A" ? "Team A" : "Team B"}?
+              Once booked, this slot cannot be cancelled from this link.
+            </p>
+            <div className="confirm-actions">
+              <button className="secondary-btn" type="button" onClick={() => setPendingTeam(null)}>
+                Cancel
+              </button>
+              <button className="primary-btn" type="button" onClick={handleJoinTeam}>
+                Sure, Book Slot
+              </button>
+            </div>
+          </section>
+        </div>
       )}
     </main>
   );

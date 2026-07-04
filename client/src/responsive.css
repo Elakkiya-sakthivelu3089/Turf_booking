@@ -634,6 +634,19 @@
     padding: 16px;
   }
 
+  .link-generator-row,
+  .generated-link-box,
+  .confirm-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .generated-link-box input,
+  .generated-link-box button,
+  .confirm-actions button {
+    width: 100%;
+  }
+
   .booked-slot-list li {
     grid-template-columns: 1fr;
   }

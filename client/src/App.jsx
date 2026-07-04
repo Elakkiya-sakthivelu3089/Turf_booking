@@ -42,6 +42,7 @@ function App() {
 
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/employee-booking" element={<EmployeeBookingLink />} />
+        <Route path="/employee-booking/:token" element={<EmployeeBookingLink />} />
 
         {/* Admin only routes */}
         <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>

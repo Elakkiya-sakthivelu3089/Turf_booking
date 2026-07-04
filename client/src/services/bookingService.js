@@ -13,6 +13,22 @@ const getHeaders = () => {
 };
 
 export const bookingService = {
+  generatePublicBookingLink: async (date) => {
+    const res = await fetch(`${API_BASE_URL}/bookings/links`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify({ date }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to generate booking link");
+    }
+
+    return data;
+  },
+
   registerPublicEmployee: async (payload) => {
     const res = await fetch(`${API_BASE_URL}/bookings/public/register`, {
       method: "POST",
@@ -31,9 +47,8 @@ export const bookingService = {
     return data;
   },
 
-  getPublicBookingPage: async (date) => {
-    const query = date ? `?date=${date}` : "";
-    const res = await fetch(`${API_BASE_URL}/bookings/public${query}`, {
+  getPublicBookingPage: async (token) => {
+    const res = await fetch(`${API_BASE_URL}/bookings/public/${token}`, {
       method: "GET",
     });
 

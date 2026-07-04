@@ -747,6 +747,119 @@ a {
     rgba(15, 23, 42, 0.82);
 }
 
+.link-generator-card {
+  display: grid;
+  gap: 14px;
+}
+
+.link-generator-row,
+.generated-link-box,
+.confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.link-generator-row {
+  justify-content: space-between;
+}
+
+.link-generator-row div {
+  display: grid;
+  gap: 4px;
+}
+
+.link-generator-row span {
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.link-generator-row strong {
+  color: #ffffff;
+}
+
+.generated-link-box input {
+  flex: 1 1 420px;
+  min-height: 44px;
+  padding: 11px 13px;
+  color: #f8fafc;
+  background: rgba(4, 9, 20, 0.74);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 8px;
+}
+
+.inline-notice {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-weight: 900;
+}
+
+.inline-notice.success {
+  color: #d1fae5;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(110, 231, 183, 0.28);
+}
+
+.inline-notice.error {
+  color: #ffe4e6;
+  background: rgba(225, 29, 72, 0.14);
+  border: 1px solid rgba(251, 113, 133, 0.32);
+}
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(1, 4, 12, 0.68);
+  backdrop-filter: blur(8px);
+}
+
+.confirm-dialog {
+  position: relative;
+  width: min(460px, 100%);
+  padding: 24px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.035)),
+    rgba(13, 18, 32, 0.96);
+  border: 1px solid rgba(103, 232, 249, 0.28);
+  border-radius: 8px;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.56);
+}
+
+.confirm-dialog h2 {
+  margin: 8px 34px 12px 0;
+  color: #ffffff;
+  font-size: 24px;
+}
+
+.confirm-dialog .muted-text {
+  margin: 0 0 18px;
+  line-height: 1.5;
+}
+
+.confirm-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  color: #dbeafe;
+  background: rgba(148, 163, 184, 0.14);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.confirm-actions {
+  justify-content: flex-end;
+}
+
 .employee-register-card {
   overflow: hidden;
 }
