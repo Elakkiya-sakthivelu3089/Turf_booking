@@ -9,7 +9,7 @@ const PublicRoute = () => {
   }
 
   if (authService.isAuthenticated() && user?.role === "EMPLOYEE") {
-    return <Navigate to="/employee/dashboard" replace />;
+    return <Navigate to="/employee/bookings" replace />;
   }
 
   return <Outlet />;

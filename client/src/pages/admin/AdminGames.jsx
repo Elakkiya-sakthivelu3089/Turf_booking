@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import TableControls from "../../components/common/TableControls";
+import { useTableControls } from "../../hooks/useTableControls";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
@@ -19,6 +21,21 @@ const AdminGames = () => {
   const categoryOptions = Array.from(
     new Map(categories.map((category) => [category.type || category.name.toUpperCase(), category])).values()
   );
+  const gameRows = games.map((game) => ({
+    ...game,
+    categoryName: game.category?.name || "No category",
+  }));
+  const gamesTable = useTableControls({
+    rows: gameRows,
+    searchFields: [
+      (game) => game.id,
+      (game) => game.name,
+      (game) => game.categoryName,
+      (game) => game.teamALimit,
+      (game) => game.teamBLimit,
+    ],
+    filterField: "categoryName",
+  });
 
   const fetchData = async () => {
     try {
@@ -258,6 +275,12 @@ const AdminGames = () => {
 
       <section className="table-card">
         <h2>Game List</h2>
+        <TableControls
+          table={gamesTable}
+          searchPlaceholder="Search games"
+          filterLabel="Category"
+          filterOptions={gamesTable.filterOptions}
+        />
 
       <table className="data-table">
         <thead>
@@ -272,12 +295,12 @@ const AdminGames = () => {
         </thead>
 
         <tbody>
-          {Array.isArray(games) && games.length > 0 ? (
-            games.map((game) => (
+          {gamesTable.pageRows.length > 0 ? (
+            gamesTable.pageRows.map((game) => (
               <tr key={game.id}>
                 <td data-label="ID">{game.id}</td>
                 <td data-label="Game">{game.name}</td>
-                <td data-label="Category">{game.category?.name || "No category"}</td>
+                <td data-label="Category">{game.categoryName}</td>
                 <td data-label="Team A Limit">{game.teamALimit}</td>
                 <td data-label="Team B Limit">{game.teamBLimit}</td>
                 <td data-label="Action" className="table-actions">

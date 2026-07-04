@@ -2,15 +2,11 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
 import "./responsive.css";
 import Login from "./pages/Login";
-import Register from "./pages/Register";
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import EmployeeDashboard from "./pages/EmployeeDashboard";
 import AdminGames from "./pages/admin/AdminGames";
-import BookingPage from "./pages/BookingPage";
 import EmployeeBookingLink from "./pages/EmployeeBookingLink";
 import AdminBookings from "./pages/admin/AdminBookings";
 import UsersPage from "./pages/UsersPage";
-import UserDetails from "./pages/UserDetails";
 
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import PublicRoute from "./components/common/PublicRoute";
@@ -20,7 +16,7 @@ const Home = () => {
   return <Navigate to="/login" replace />;
 };
 
-Unauthorized = () => {
+const Unauthorized = () => {
   return (
     <main className="app-page app-page-centered">
       <section className="status-card">
@@ -34,12 +30,14 @@ Unauthorized = () => {
 function App() {
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <div className="brand-backdrop" aria-hidden="true">
+        <span>CookScape</span>
+      </div>
       <Routes>
         <Route path="/" element={<Home />} />
 
         <Route element={<PublicRoute />}>
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
         </Route>
 
         <Route path="/unauthorized" element={<Unauthorized />} />
@@ -54,19 +52,11 @@ function App() {
             <Route path="/admin/users" element={<UsersPage mode="admin" />} />
           </Route>
         </Route>
-
-        {/* Employee only routes */}
-        <Route element={<ProtectedRoute allowedRoles={["EMPLOYEE"]} />}>
-          <Route element={<SidebarLayout role="EMPLOYEE" />}>
-            <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
-            <Route path="/employee/bookings" element={<BookingPage />} />
-            <Route path="/employee/user-details" element={<UserDetails />} />
-          </Route>
-        </Route>
-
-        {/* fallback */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <footer className="copyright-footer">
+        Copyright &copy; {new Date().getFullYear()} CookScape. All rights reserved.
+      </footer>
     </BrowserRouter>
   );
 }

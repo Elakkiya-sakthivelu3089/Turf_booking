@@ -1,12 +1,16 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { PrismaClient } = require("@prisma/client");
+const { ensureDefaultAdmin } = require("../utils/defaultAdmin");
 
 const prisma = new PrismaClient();
 
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { password } = req.body;
+    const email = String(req.body.email || "").trim().toLowerCase();
+
+    await ensureDefaultAdmin(prisma);
 
     const user = await prisma.user.findUnique({
       where: { email },
@@ -55,55 +59,3 @@ exports.login = async (req, res) => {
 };
 
 
-exports.registerEmployee = async (req, res) => {
-  try {
-    const { name, email, password, phone } = req.body;
-
-    if (!name || !email || !password) {
-      return res.status(400).json({
-        message: "Name, email and password are required",
-      });
-    }
-
-    // Check if email already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (existingUser) {
-      return res.status(400).json({
-        message: "Employee already exists",
-      });
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create employee
-    const employee = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        phone,
-        role: "EMPLOYEE",
-      },
-    });
-
-    res.status(201).json({
-      message: "Employee registered successfully",
-      employee: {
-        id: employee.id,
-        name: employee.name,
-        email: employee.email,
-        phone: employee.phone,
-        role: employee.role,
-      },
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Server Error",
-    });
-  }
-};

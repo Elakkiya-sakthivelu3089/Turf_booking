@@ -5,7 +5,7 @@ import { authService } from "../services/authService";
 const Login = () => {
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("admin@gmail.com");
+  const [email, setEmail] = useState("admin001@gmail.com");
   const [password, setPassword] = useState("admin123");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,11 +18,10 @@ const Login = () => {
       setError("");
 
       const data = await authService.login(email, password);
-
       if (data.user.role === "ADMIN") {
         navigate("/admin/dashboard", { replace: true });
       } else {
-        navigate("/employee/dashboard", { replace: true });
+        navigate("/employee/bookings", { replace: true });
       }
     } catch (err) {
       setError(err.message || "Login failed");
@@ -62,11 +61,6 @@ const Login = () => {
             {loading ? "Logging in..." : "Login"}
           </button>
         </form>
-
-        <p className="auth-link">
-          Don't have an account?{" "}
-          <span onClick={() => navigate("/register")}>Register</span>
-        </p>
       </div>
     </div>
   );

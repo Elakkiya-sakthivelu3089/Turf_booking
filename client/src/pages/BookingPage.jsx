@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { bookingService } from "../services/bookingService";
+import GameIcon from "../components/bookings/GameIcon";
 
 const BookingPage = ({ title = "Turf Bookings", audience = "Employee booking" }) => {
   const today = new Date().toISOString().split("T")[0];
@@ -11,7 +12,7 @@ const BookingPage = ({ title = "Turf Bookings", audience = "Employee booking" })
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const loadBookings = async () => {
+  const loadBookings = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -22,26 +23,44 @@ const BookingPage = ({ title = "Turf Bookings", audience = "Employee booking" })
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDate]);
 
   useEffect(() => {
     loadBookings();
-  }, [selectedDate]);
+  }, [loadBookings]);
 
-  const categories = [
-    {
-      name: "INDOOR",
-      label: "Indoor",
-    },
-    {
-      name: "OUTDOOR",
-      label: "Outdoor",
-    },
-  ];
+  const categories = Array.from(
+    new Set(games.map((game) => game.category).filter(Boolean))
+  ).map((name) => ({
+    name,
+    label: name.charAt(0).toUpperCase() + name.slice(1).toLowerCase(),
+  }));
 
   const filteredGames = games.filter(
     (game) => game.category === selectedCategory
   );
+  const gameFilterOptions = selectedCategory ? filteredGames : games;
+
+  const selectGame = (game) => {
+    setSelectedCategory(game.category);
+    setSelectedGame(game);
+    setSelectedSlot(null);
+  };
+
+  const refreshSelectedBooking = async () => {
+    const data = await bookingService.getBookingPage(selectedDate);
+    setGames(data.games || []);
+
+    if (!selectedGame || !selectedSlot) return;
+
+    const updatedGame = data.games.find((game) => game.id === selectedGame.id);
+    const updatedSlot = updatedGame?.slots.find(
+      (slot) => slot.startTime === selectedSlot.startTime
+    );
+
+    setSelectedGame(updatedGame || null);
+    setSelectedSlot(updatedSlot || null);
+  };
 
   const handleJoinTeam = async (team) => {
     try {
@@ -54,20 +73,10 @@ const BookingPage = ({ title = "Turf Bookings", audience = "Employee booking" })
       });
 
       alert("Slot booked successfully");
-
-      const data = await bookingService.getBookingPage(selectedDate);
-      setGames(data.games || []);
-
-      const updatedGame = data.games.find((g) => g.id === selectedGame.id);
-
-      const updatedSlot = updatedGame.slots.find(
-        (s) => s.startTime === selectedSlot.startTime
-      );
-
-      setSelectedGame(updatedGame);
-      setSelectedSlot(updatedSlot);
+      await refreshSelectedBooking();
     } catch (error) {
       alert(error.message || "Booking failed");
+      await refreshSelectedBooking();
     }
   };
 
@@ -91,6 +100,41 @@ const BookingPage = ({ title = "Turf Bookings", audience = "Employee booking" })
             setSelectedSlot(null);
           }}
         />
+        <label>Category</label>
+        <select
+          value={selectedCategory || ""}
+          onChange={(e) => {
+            setSelectedCategory(e.target.value || null);
+            setSelectedGame(null);
+            setSelectedSlot(null);
+          }}
+        >
+          <option value="">Select category</option>
+          {categories.map((cat) => (
+            <option key={cat.name} value={cat.name}>
+              {cat.label}
+            </option>
+          ))}
+        </select>
+        <label>Game</label>
+        <select
+          value={selectedGame?.id || ""}
+          onChange={(e) => {
+            const game = games.find((item) => item.id === Number(e.target.value));
+            if (game) selectGame(game);
+            if (!e.target.value) {
+              setSelectedGame(null);
+              setSelectedSlot(null);
+            }
+          }}
+        >
+          <option value="">Select game</option>
+          {gameFilterOptions.map((game) => (
+            <option key={game.id} value={game.id}>
+              {game.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       {loading && <p className="loading-text">Loading...</p>}
@@ -134,11 +178,11 @@ const BookingPage = ({ title = "Turf Bookings", audience = "Employee booking" })
                     className={`selection-card ${
                       selectedGame?.id === game.id ? "is-active game-active" : ""
                     }`}
-                    onClick={() => {
-                      setSelectedGame(game);
-                      setSelectedSlot(null);
-                    }}
-                  >
+                  onClick={() => {
+                    selectGame(game);
+                  }}
+                >
+                    <GameIcon name={game.name} />
                     <h4>{game.name}</h4>
                   </div>
                 ))}

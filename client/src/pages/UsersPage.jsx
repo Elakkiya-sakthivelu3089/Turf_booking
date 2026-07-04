@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { userService } from "../services/userService";
+import TableControls from "../components/common/TableControls";
+import { useTableControls } from "../hooks/useTableControls";
 
 const emptyForm = {
   name: "",
@@ -14,6 +16,17 @@ const UsersPage = () => {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState("");
+  const usersTable = useTableControls({
+    rows: users,
+    searchFields: [
+      (user) => user.id,
+      (user) => user.name,
+      (user) => user.email,
+      (user) => user.phone,
+      (user) => user.role,
+    ],
+    filterField: "role",
+  });
 
   const loadUsers = async () => {
     try {
@@ -86,7 +99,7 @@ const UsersPage = () => {
   };
 
   return (
-    <main className="app-page compact-page">
+    <main className="app-page admin-user-detail-page">
       <div className="page-header">
         <p className="eyebrow">Admin panel</p>
         <h1>User Details</h1>
@@ -132,6 +145,12 @@ const UsersPage = () => {
 
       <section className="table-card">
         <h2>User List</h2>
+        <TableControls
+          table={usersTable}
+          searchPlaceholder="Search users"
+          filterLabel="Role"
+          filterOptions={usersTable.filterOptions}
+        />
         <table className="data-table">
           <thead>
             <tr>
@@ -144,7 +163,7 @@ const UsersPage = () => {
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
+            {usersTable.pageRows.map((user) => (
               <tr key={user.id}>
                 <td data-label="ID">{user.id}</td>
                 <td data-label="Name">{user.name}</td>
@@ -157,6 +176,11 @@ const UsersPage = () => {
                 </td>
               </tr>
             ))}
+            {usersTable.pageRows.length === 0 && (
+              <tr>
+                <td className="empty-cell" colSpan="6">No users found</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </section>

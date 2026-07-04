@@ -1,10 +1,10 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const bcrypt = require("bcryptjs");
+const { DEFAULT_ADMIN, ensureDefaultAdmin } = require("../utils/defaultAdmin");
 
 const {
   generateSlots,
-  isBookableSlot,
   decoratePublicSlots,
   getPublicLinkStatus,
   isPublicBookableSlot,
@@ -27,7 +27,7 @@ const getLocalDateString = () => {
 const getBookingPage = async (req, res) => {
   try {
     const selectedDate = normalizeDate(req.query.date || new Date());
-    const slots = generateSlots();
+    const slots = decoratePublicSlots(generateSlots(), selectedDate);
 
     const games = await prisma.game.findMany({
       where: {
@@ -118,9 +118,7 @@ const getPublicBookingPage = async (req, res) => {
       });
     }
 
-    const slots = decoratePublicSlots(generateSlots(), selectedDate).filter(
-      (slot) => !slot.isExpired
-    );
+    const slots = decoratePublicSlots(generateSlots(), selectedDate);
 
     const games = await prisma.game.findMany({
       where: {
@@ -222,6 +220,30 @@ const registerPublicEmployee = async (req, res) => {
     });
 
     if (existingUser) {
+      if (existingUser.email === DEFAULT_ADMIN.email || existingUser.role === "ADMIN") {
+        const admin = await prisma.user.update({
+          where: { id: existingUser.id },
+          data: {
+            name: name.trim(),
+            position,
+            phone: phone.trim(),
+            role: "ADMIN",
+          },
+        });
+
+        return res.json({
+          message: "Admin details updated",
+          employee: {
+            id: admin.id,
+            name: admin.name,
+            position: admin.position,
+            email: admin.email,
+            phone: admin.phone,
+            role: admin.role,
+          },
+        });
+      }
+
       return res.status(400).json({
         message: "This email is already registered for booking",
       });
@@ -282,14 +304,14 @@ const joinBooking = async (req, res) => {
       });
     }
 
-    if (!isBookableSlot(startTime, endTime)) {
-      return res.status(400).json({
-        message: "This slot is blocked for break or maintenance",
-      });
-    }
-
     const selectedDate = new Date(date);
     selectedDate.setHours(0, 0, 0, 0);
+
+    if (!isPublicBookableSlot(startTime, endTime, selectedDate)) {
+      return res.status(400).json({
+        message: "This slot is closed for booking",
+      });
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       const alreadyBooked = await tx.bookingPlayer.findFirst({
@@ -389,20 +411,15 @@ const joinBooking = async (req, res) => {
 };
 
 const joinPublicBooking = async (req, res) => {
+  await ensureDefaultAdmin(prisma);
   req.body.date = getLocalDateString();
-
-  if (!isPublicBookableSlot(req.body.startTime, req.body.endTime, new Date())) {
-    return res.status(400).json({
-      message: "This slot is closed for employee booking",
-    });
-  }
 
   const employee = await prisma.user.findUnique({
     where: { id: Number(req.body.userId) },
     select: { id: true, role: true },
   });
 
-  if (!employee || employee.role !== "EMPLOYEE") {
+  if (!employee || !["EMPLOYEE", "ADMIN"].includes(employee.role)) {
     return res.status(400).json({
       message: "Please register employee details before booking",
     });
@@ -413,6 +430,8 @@ const joinPublicBooking = async (req, res) => {
 
 const listAllBookings = async (req, res) => {
   try {
+    await ensureDefaultAdmin(prisma);
+
     if (req.user?.role !== "ADMIN") {
       return res.status(403).json({
         message: "Admin access required",

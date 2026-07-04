@@ -10,7 +10,6 @@ const adminLinks = [
 ];
 
 const employeeLinks = [
-  { to: "/employee/dashboard", label: "Dashboard" },
   { to: "/employee/bookings", label: "Bookings" },
   { to: "/employee/user-details", label: "User Details" },
 ];

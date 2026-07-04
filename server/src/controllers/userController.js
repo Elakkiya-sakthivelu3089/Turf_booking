@@ -1,10 +1,13 @@
 const bcrypt = require("bcryptjs");
 const { PrismaClient } = require("@prisma/client");
+const { DEFAULT_ADMIN, ensureDefaultAdmin } = require("../utils/defaultAdmin");
 
 const prisma = new PrismaClient();
 
 exports.listUsers = async (req, res) => {
   try {
+    await ensureDefaultAdmin(prisma);
+
     if (req.user?.role !== "ADMIN") {
       return res.status(403).json({ message: "Admin access required" });
     }
@@ -75,14 +78,50 @@ exports.getUser = async (req, res) => {
 
 exports.createUser = async (req, res) => {
   try {
+    await ensureDefaultAdmin(prisma);
+
     if (req.user?.role !== "ADMIN") {
       return res.status(403).json({ message: "Admin access required" });
     }
 
-    const { name, email, password, phone, position, role } = req.body;
+    const { name, password, phone, position, role } = req.body;
+    const email = String(req.body.email || "").trim().toLowerCase();
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: "Name, email and password are required" });
+    }
+
+    if (email === DEFAULT_ADMIN.email) {
+      const data = {
+        name,
+        phone,
+        position,
+        role: "ADMIN",
+      };
+
+      if (password) {
+        data.password = await bcrypt.hash(password, 10);
+      }
+
+      const admin = await prisma.user.upsert({
+        where: { email },
+        update: data,
+        create: {
+          ...data,
+          email,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          position: true,
+          role: true,
+          createdAt: true,
+        },
+      });
+
+      return res.status(200).json(admin);
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -171,6 +210,8 @@ exports.deleteUser = async (req, res) => {
         where: { id },
       });
     });
+
+    await ensureDefaultAdmin(prisma);
 
     res.json({ message: "User and active bookings deleted" });
   } catch (error) {
